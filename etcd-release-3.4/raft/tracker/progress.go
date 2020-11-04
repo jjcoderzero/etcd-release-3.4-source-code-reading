@@ -1,17 +1,3 @@
-// Copyright 2019 The etcd Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package tracker
 
 import (
@@ -29,6 +15,8 @@ import (
 // certain State. All of this isn't ideal.
 type Progress struct {
 	Match, Next uint64
+	// Match:对应follower节点当前已经成功赋值的Entry记录的所有值。
+	// Next:对应follower节点下一个待赋值的Entry记录的索引值。
 	// State defines how the leader should interact with the follower.
 	//
 	// When in StateProbe, leader sends at most one replication message
@@ -40,21 +28,21 @@ type Progress struct {
 	//
 	// When in StateSnapshot, leader should have sent out snapshot
 	// before and stops sending any replication message.
-	State StateType
+	State StateType // 对应follower节点的复制状态
 
 	// PendingSnapshot is used in StateSnapshot.
 	// If there is a pending snapshot, the pendingSnapshot will be set to the
 	// index of the snapshot. If pendingSnapshot is set, the replication process of
 	// this Progress will be paused. raft will not resend snapshot until the pending one
 	// is reported to be failed.
-	PendingSnapshot uint64
+	PendingSnapshot uint64 // 当前正在发送的快照数据信息
 
 	// RecentActive is true if the progress is recently active. Receiving any messages
 	// from the corresponding follower indicates the progress is active.
 	// RecentActive can be reset to false after an election timeout.
 	//
 	// TODO(tbg): the leader should always have this set to true.
-	RecentActive bool
+	RecentActive bool // 从当前leader节点的角度来看，该Progress实例对应的follower节点是否存活。
 
 	// ProbeSent is used while this follower is in StateProbe. When ProbeSent is
 	// true, raft should pause sending replication message to this peer until
@@ -73,7 +61,7 @@ type Progress struct {
 	// When a leader receives a reply, the previous inflights should
 	// be freed by calling inflights.FreeLE with the index of the last
 	// received entry.
-	Inflights *Inflights
+	Inflights *Inflights // 记录了已经发送出去但未收到响应的消息信息。
 
 	// IsLearner is true if this progress is tracked for a learner.
 	IsLearner bool

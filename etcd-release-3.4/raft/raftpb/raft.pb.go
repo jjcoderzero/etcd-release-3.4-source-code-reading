@@ -314,9 +314,10 @@ func (*Message) ProtoMessage()               {}
 func (*Message) Descriptor() ([]byte, []int) { return fileDescriptorRaft, []int{3} }
 
 type HardState struct {
-	Term             uint64 `protobuf:"varint,1,opt,name=term" json:"term"`
-	Vote             uint64 `protobuf:"varint,2,opt,name=vote" json:"vote"`
-	Commit           uint64 `protobuf:"varint,3,opt,name=commit" json:"commit"`
+	// 集群中每个节点都需要保存一些必须的基本信息，在etcd中将其分装成HardState
+	Term             uint64 `protobuf:"varint,1,opt,name=term" json:"term"` // 当前任期号
+	Vote             uint64 `protobuf:"varint,2,opt,name=vote" json:"vote"` // 当前节点在该任期中将选票投给了哪个节点
+	Commit           uint64 `protobuf:"varint,3,opt,name=commit" json:"commit"` // 已提交Entry记录的位置
 	XXX_unrecognized []byte `json:"-"`
 }
 

@@ -56,18 +56,18 @@ enum MessageType {
 }
 
 message Message {
-	optional MessageType type        = 1  [(gogoproto.nullable) = false];
-	optional uint64      to          = 2  [(gogoproto.nullable) = false];
-	optional uint64      from        = 3  [(gogoproto.nullable) = false];
-	optional uint64      term        = 4  [(gogoproto.nullable) = false];
-	optional uint64      logTerm     = 5  [(gogoproto.nullable) = false];
-	optional uint64      index       = 6  [(gogoproto.nullable) = false];
-	repeated Entry       entries     = 7  [(gogoproto.nullable) = false];
-	optional uint64      commit      = 8  [(gogoproto.nullable) = false];
-	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];
-	optional bool        reject      = 10 [(gogoproto.nullable) = false];
-	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];
-	optional bytes       context     = 12;
+	optional MessageType type        = 1  [(gogoproto.nullable) = false];// 定义了消息的类型
+	optional uint64      to          = 2  [(gogoproto.nullable) = false];// 消息的目标节点ID
+	optional uint64      from        = 3  [(gogoproto.nullable) = false];// 发送消息的节点ID
+	optional uint64      term        = 4  [(gogoproto.nullable) = false];// 发送消息的节点Term值
+	optional uint64      logTerm     = 5  [(gogoproto.nullable) = false];// 该消息携带的第一条Entry记录的Term值
+	optional uint64      index       = 6  [(gogoproto.nullable) = false];// 记录了一个索引值，该索引值的具体含义与消息的类型相关
+	repeated Entry       entries     = 7  [(gogoproto.nullable) = false];//
+	optional uint64      commit      = 8  [(gogoproto.nullable) = false];// 消息发送节点的提交位置
+	optional Snapshot    snapshot    = 9  [(gogoproto.nullable) = false];// 该字段保存了快照数据
+	optional bool        reject      = 10 [(gogoproto.nullable) = false];// 表示是否拒绝收到的消息
+	optional uint64      rejectHint  = 11 [(gogoproto.nullable) = false];// 在follower节点拒绝leader节点的消息之后，会在该字段记录一个entry索引值供leader节点
+	optional bytes       context     = 12; // 消息携带的一些上下文信息
 }
 
 message HardState {

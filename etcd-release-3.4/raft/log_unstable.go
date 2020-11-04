@@ -1,17 +1,3 @@
-// Copyright 2015 The etcd Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package raft
 
 import pb "go.etcd.io/etcd/raft/raftpb"
@@ -21,34 +7,29 @@ import pb "go.etcd.io/etcd/raft/raftpb"
 // position in storage; this means that the next write to storage
 // might need to truncate the log before persisting unstable.entries.
 type unstable struct {
-	// the incoming unstable snapshot, if any.
-	snapshot *pb.Snapshot
-	// all entries that have not yet been written to storage.
-	entries []pb.Entry
-	offset  uint64
+	snapshot *pb.Snapshot // 快照数据，这个快照数据也是未写入Storage中的。
+	entries []pb.Entry // 用于保存未写入Storage中的Entry记录
+	offset  uint64 // entries中的第一条Entry记录的索引值
 
 	logger Logger
 }
 
-// maybeFirstIndex returns the index of the first possible entry in entries
-// if it has a snapshot.
+
 func (u *unstable) maybeFirstIndex() (uint64, bool) {
-	if u.snapshot != nil {
+	if u.snapshot != nil { // 如果unstable记录了快照，则通过快照元数据返回相应的索引值。
 		return u.snapshot.Metadata.Index + 1, true
 	}
 	return 0, false
 }
 
-// maybeLastIndex returns the last index if it has at least one
-// unstable entry or snapshot.
 func (u *unstable) maybeLastIndex() (uint64, bool) {
-	if l := len(u.entries); l != 0 {
-		return u.offset + uint64(l) - 1, true
+	if l := len(u.entries); l != 0 { // 检测entries切片的长度
+		return u.offset + uint64(l) - 1, true // 返回entries中最后一条Entry记录的所有值
 	}
-	if u.snapshot != nil {
+	if u.snapshot != nil { // 如果存在快照数据，则通过其元数据返回索引值
 		return u.snapshot.Metadata.Index, true
 	}
-	return 0, false
+	return 0, false // entries和snapshot都是空的，则整个unstable其实也就没有任何数据了。
 }
 
 // maybeTerm returns the term of the entry at index i, if there

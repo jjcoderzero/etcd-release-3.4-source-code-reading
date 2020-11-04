@@ -1,17 +1,3 @@
-// Copyright 2015 The etcd Authors
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 package raft
 
 import (
@@ -210,18 +196,19 @@ func DescribeEntries(ents []pb.Entry, f EntryFormatter) string {
 }
 
 func limitSize(ents []pb.Entry, maxSize uint64) []pb.Entry {
-	if len(ents) == 0 {
+	if len(ents) == 0 { // 检测ents切片的长度
 		return ents
 	}
 	size := ents[0].Size()
 	var limit int
+	// 遍历ents切片，查找limit(limit下标之前所有Entry的字节数之和，小于maxsize值)
 	for limit = 1; limit < len(ents); limit++ {
 		size += ents[limit].Size()
 		if uint64(size) > maxSize {
 			break
 		}
 	}
-	return ents[:limit]
+	return ents[:limit] // 返回ents切片中limit之前的部分
 }
 
 func assertConfStatesEquivalent(l Logger, cs1, cs2 pb.ConfState) {
