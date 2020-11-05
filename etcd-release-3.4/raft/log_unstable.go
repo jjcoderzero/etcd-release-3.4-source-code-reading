@@ -32,25 +32,24 @@ func (u *unstable) maybeLastIndex() (uint64, bool) {
 	return 0, false // entries和snapshot都是空的，则整个unstable其实也就没有任何数据了。
 }
 
-// maybeTerm returns the term of the entry at index i, if there
-// is any.
 func (u *unstable) maybeTerm(i uint64) (uint64, bool) {
+	// 指定索引值对应的Entry记录已经不在unstable中，可能被持久化或是被写入快照
 	if i < u.offset {
-		if u.snapshot != nil && u.snapshot.Metadata.Index == i {
+		if u.snapshot != nil && u.snapshot.Metadata.Index == i { // 检测是不是快照所包含的最后一条Entry记录
 			return u.snapshot.Metadata.Term, true
 		}
 		return 0, false
 	}
 
-	last, ok := u.maybeLastIndex()
+	last, ok := u.maybeLastIndex() // 获取unstable中最后一条Entry记录的索引
 	if !ok {
 		return 0, false
 	}
-	if i > last {
+	if i > last { // 指定的索引值超出了unstable已知范围，查找失败
 		return 0, false
 	}
 
-	return u.entries[i-u.offset].Term, true
+	return u.entries[i-u.offset].Term, true // 从entries字段中查找指定的Entry并返回其Term值。
 }
 
 func (u *unstable) stableTo(i, t uint64) {
