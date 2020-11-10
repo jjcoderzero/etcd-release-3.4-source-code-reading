@@ -51,8 +51,7 @@ func newLog(storage Storage, logger Logger) *raftLog {
 	return newLogWithSize(storage, logger, noLimit)
 }
 
-// newLogWithSize returns a log using the given storage and max
-// message size.
+// newLogWithSize返回使用给定存储空间和最大消息大小的日志。
 func newLogWithSize(storage Storage, logger Logger, maxNextEntsSize uint64) *raftLog {
 	if storage == nil {
 		log.Panic("storage must not be nil")
@@ -72,7 +71,7 @@ func newLogWithSize(storage Storage, logger Logger, maxNextEntsSize uint64) *raf
 	}
 	log.unstable.offset = lastIndex + 1
 	log.unstable.logger = logger
-	// Initialize our committed and applied pointers to the time of the last compaction.
+	// 初始化提交和应用的指针，指向上次压缩的时间。
 	log.committed = firstIndex - 1
 	log.applied = firstIndex - 1
 

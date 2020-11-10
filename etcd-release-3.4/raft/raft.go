@@ -100,90 +100,34 @@ type Config struct {
 
 	peers []uint64 // 记录集群中所有节点的ID, 只有在启动新的raft集群时才应该设置它。如果设置了对等点，从以前的配置重新启动筏会产生恐慌。对等点是私有的，现在只用于测试。
 
-	// learners contains the IDs of all learner nodes (including self if the
-	// local node is a learner) in the raft cluster. learners only receives
-	// entries from the leader node. It does not vote or promote itself.
-	learners []uint64
 
-	// ElectionTick is the number of Node.Tick invocations that must pass between
-	// elections. That is, if a follower does not receive any message from the
-	// leader of current term before ElectionTick has elapsed, it will become
-	// candidate and start an election. ElectionTick must be greater than
-	// HeartbeatTick. We suggest ElectionTick = 10 * HeartbeatTick to avoid
-	// unnecessary leader switching.
-	ElectionTick int // 用于初始化raft.electionTimeout,即逻辑时钟连续推进多少次后，就会触发Follower节点的状态切换及新一轮的Leader选举。
-	// HeartbeatTick is the number of Node.Tick invocations that must pass between
-	// heartbeats. That is, a leader sends heartbeat messages to maintain its
-	// leadership every HeartbeatTick ticks.
-	HeartbeatTick int // 用于初始化raft.heartbeatTimeout,即逻辑时钟连续推进多少次后，就会触发Leader节点发送心跳消息。
+	learners []uint64 // learners包含raft集群中所有learner节点的id(如果本地节点是learner，则包括self).learner只接收来自leader节点的条目。它不投票或推销自己。
 
-	// Storage is the storage for raft. raft generates entries and states to be
-	// stored in storage. raft reads the persisted entries and states out of
-	// Storage when it needs. raft reads out the previous state and configuration
-	// out of storage when restarting.
-	Storage Storage // 当前节点保存raft日志记录使用的存储。
-	// Applied is the last applied index. It should only be set when restarting
-	// raft. raft will not return entries to the application smaller or equal to
-	// Applied. If Applied is unset when restarting, raft might return previous
-	// applied entries. This is a very application dependent configuration.
-	Applied uint64 // 当前已经应用的记录位置，该值在节点重启时需要设置，否则会重新应用已经用过的Entry记录。
+	ElectionTick int // ElectionTick是节点的数量。在选举之间必须通过的号召。也就是说，如果一个跟随者在选举结束前没有收到现任领导人的任何信息，他将成为候选人并开始选举。ElectionTick必须大于HeartbeatTick。我们建议ElectionTick = 10 * HeartbeatTick，以避免不必要的领导人切换。
 
-	// MaxSizePerMsg limits the max byte size of each append message. Smaller
-	// value lowers the raft recovery cost(initial probing and message lost
-	// during normal operation). On the other side, it might affect the
-	// throughput during normal replication. Note: math.MaxUint64 for unlimited,
-	// 0 for at most one entry per message.
+	HeartbeatTick int // HeartbeatTick是必须在心跳之间传递的Node.Tick调用的数量。也就是说，领导者在每一次心跳都要发送心跳信息来维持其领导力。
+
+	Storage Storage // Storage是用来存放raft的。raft生成要存储在存储器中的项和状态。raft在需要时从存储中读取持久化的条目和状态。当重新启动时，raft从存储中读出以前的状态和配置。
+
+	Applied uint64 // Applied是最后一个应用的索引。只有在重新启动raft时才能设置。raft不会向应用程序返回小于或等于应用程序的项。如果“应用”在重新启动时未被设置，则raft可能会返回先前应用的条目。这是一个非常依赖于应用程序的配置。
+
 	MaxSizePerMsg uint64// 用于初始化raft.maxMsgSize字段，每条消息的最大字节数，如果是MaxUint64则没有上限，如果是0则表示每条消息最多携带一条Entry。
-	// MaxCommittedSizePerReady limits the size of the committed entries which
-	// can be applied.
-	MaxCommittedSizePerReady uint64
-	// MaxUncommittedEntriesSize limits the aggregate byte size of the
-	// uncommitted entries that may be appended to a leader's log. Once this
-	// limit is exceeded, proposals will begin to return ErrProposalDropped
-	// errors. Note: 0 for no limit.
-	MaxUncommittedEntriesSize uint64
-	// MaxInflightMsgs limits the max number of in-flight append messages during
-	// optimistic replication phase. The application transportation layer usually
-	// has its own sending buffer over TCP/UDP. Setting MaxInflightMsgs to avoid
-	// overflowing that sending buffer. TODO (xiangli): feedback to application to
-	// limit the proposal rate?
-	MaxInflightMsgs int // 用于初始化raft.maxInflight，即已经发送出去且未收到响应的最大消息个数。
 
-	// CheckQuorum specifies if the leader should check quorum activity. Leader
-	// steps down when quorum is not active for an electionTimeout.
-	CheckQuorum bool // 是否开启checkQuorum模式，用于初始化raft.checkQuorum字段。
+	MaxCommittedSizePerReady uint64 // MaxCommittedSizePerReady限制了可以应用的提交项的大小。
 
-	// PreVote enables the Pre-Vote algorithm described in raft thesis section
-	// 9.6. This prevents disruption when a node that has been partitioned away
-	// rejoins the cluster.
-	PreVote bool // 是否开启PreVote模式，用于初始化raft.Prevote字段。
+	MaxUncommittedEntriesSize uint64 // MaxUncommittedEntriesSize限制可附加到leader日志中的未提交条目的聚合字节大小。一旦超过这个限制，建议将开始返回errproposaldrop错误。注:0表示无限制。
 
-	// ReadOnlyOption specifies how the read only request is processed.
-	//
-	// ReadOnlySafe guarantees the linearizability of the read only request by
-	// communicating with the quorum. It is the default and suggested option.
-	//
-	// ReadOnlyLeaseBased ensures linearizability of the read only request by
-	// relying on the leader lease. It can be affected by clock drift.
-	// If the clock drift is unbounded, leader might keep the lease longer than it
-	// should (clock can move backward/pause without any bound). ReadIndex is not safe
-	// in that case.
-	// CheckQuorum MUST be enabled if ReadOnlyOption is ReadOnlyLeaseBased.
-	ReadOnlyOption ReadOnlyOption
+	MaxInflightMsgs int // MaxInflightMsgs限制了乐观复制阶段中动态追加消息的最大数量。应用程序传输层通常有自己的TCP/UDP发送缓冲区。设置MaxInflightMsgs以避免溢出发送缓冲区
 
-	// Logger is the logger used for raft log. For multinode which can host
-	// multiple raft group, each raft group can have its own logger
-	Logger Logger
+	CheckQuorum bool // CheckQuorum指定leader是否应该检查quorum活动。选举超时时，当quorum不活跃时，leader下台。
 
-	// DisableProposalForwarding set to true means that followers will drop
-	// proposals, rather than forwarding them to the leader. One use case for
-	// this feature would be in a situation where the Raft leader is used to
-	// compute the data of a proposal, for example, adding a timestamp from a
-	// hybrid logical clock to data in a monotonically increasing way. Forwarding
-	// should be disabled to prevent a follower with an inaccurate hybrid
-	// logical clock from assigning the timestamp and then forwarding the data
-	// to the leader.
-	DisableProposalForwarding bool
+	PreVote bool // PreVote实现了预选算法。这样可以防止已分区的节点重新加入集群时产生中断。
+
+	ReadOnlyOption ReadOnlyOption // ReadOnlyOption指定如何处理只读请求。ReadOnlySafe通过与仲裁通信来保证只读请求的线性化。这是默认和建议的选项。ReadOnlyLeaseBased通过依赖主租约确保了只读请求的线性化。它会受到时钟漂移的影响。如果时钟漂移是无限制的，leader可能会延长租约的时间(时钟可以没有任何限制地向后移动/暂停)。在这种情况下，ReadIndex不安全。如果ReadOnlyOption是基于readonlylease的，则必须启用CheckQuorum。
+
+	Logger Logger // Logger使用于raft日志的记录器.对于可以承载多个raft组的多项式，每个raft组可以有自己的日志记录器
+
+	DisableProposalForwarding bool // DisableProposalForwarding设置为true意味着追随者会放弃建议，而不是转发给领导。这个特性的一个用例是使用raft leader来计算一个提议的数据，例如，以单调递增的方式将一个混合逻辑时钟的时间戳添加到数据中。转发应该被禁用，以防止一个不准确的混合逻辑时钟的追随者分配时间戳，然后转发数据给领导者。
 }
 
 func (c *Config) validate() error {
@@ -207,8 +151,7 @@ func (c *Config) validate() error {
 		c.MaxUncommittedEntriesSize = noLimit
 	}
 
-	// default MaxCommittedSizePerReady to MaxSizePerMsg because they were
-	// previously the same parameter.
+	// 默认的MaxCommittedSizePerReady是MaxSizePerMsg，因为它们以前是相同的参数。
 	if c.MaxCommittedSizePerReady == 0 {
 		c.MaxCommittedSizePerReady = c.MaxSizePerMsg
 	}
@@ -298,10 +241,12 @@ type raft struct {
 }
 
 func newRaft(c *Config) *raft {
-	if err := c.validate(); err != nil {
+	if err := c.validate(); err != nil { // 检测参数config中各字段的合法性
 		panic(err.Error())
 	}
+	// 创建raftlog实例，用于记录Entry记录。
 	raftlog := newLogWithSize(c.Storage, c.Logger, c.MaxCommittedSizePerReady)
+	// 获取raftLog.storage的初始状态(HardState和ConfState)
 	hs, cs, err := c.Storage.InitialState()
 	if err != nil {
 		panic(err) // TODO(bdarnell)
@@ -314,10 +259,11 @@ func newRaft(c *Config) *raft {
 			// updated to specify their nodes through a snapshot.
 			panic("cannot specify both newRaft(peers, learners) and ConfState.(Voters, Learners)")
 		}
+		// 根据快照中记录的集群信息和Config的配置信息初始化集群中的节点信息。
 		cs.Voters = c.peers
 		cs.Learners = c.learners
 	}
-
+	// 创建raft实例
 	r := &raft{
 		id:                        c.ID,
 		lead:                      None,
@@ -580,18 +526,18 @@ func (r *raft) maybeCommit() bool {
 
 func (r *raft) reset(term uint64) {
 	if r.Term != term {
-		r.Term = term
-		r.Vote = None
+		r.Term = term // 重置term字段
+		r.Vote = None // 重置vote字段
 	}
-	r.lead = None
+	r.lead = None // 清空lead字段
 
-	r.electionElapsed = 0
-	r.heartbeatElapsed = 0
-	r.resetRandomizedElectionTimeout()
+	r.electionElapsed = 0 // 重置选举计时器
+	r.heartbeatElapsed = 0 // 重置心跳计时器
+	r.resetRandomizedElectionTimeout() // 重置选举计时器的过期时间(随机值)
 
-	r.abortLeaderTransfer()
+	r.abortLeaderTransfer() // 清空leadTransferee
 
-	r.prs.ResetVotes()
+	r.prs.ResetVotes() // 重置vote字段
 	r.prs.Visit(func(id uint64, pr *tracker.Progress) {
 		*pr = tracker.Progress{
 			Match:     0,
@@ -599,14 +545,14 @@ func (r *raft) reset(term uint64) {
 			Inflights: tracker.NewInflights(r.prs.MaxInflight),
 			IsLearner: pr.IsLearner,
 		}
-		if id == r.id {
+		if id == r.id { // 将当前节点对应的prs.Match设置成lastIndex
 			pr.Match = r.raftLog.lastIndex()
 		}
 	})
 
-	r.pendingConfIndex = 0
+	r.pendingConfIndex = 0 // 清空pendingConf字段
 	r.uncommittedSize = 0
-	r.readOnly = newReadOnly(r.readOnly.option)
+	r.readOnly = newReadOnly(r.readOnly.option) // 只读请求的相关配置
 }
 
 func (r *raft) appendEntry(es ...pb.Entry) (accepted bool) {
@@ -671,11 +617,11 @@ func (r *raft) tickHeartbeat() {
 }
 
 func (r *raft) becomeFollower(term uint64, lead uint64) {
-	r.step = stepFollower
-	r.reset(term)
-	r.tick = r.tickElection
-	r.lead = lead
-	r.state = StateFollower
+	r.step = stepFollower // 将step字段设置成stepFollower,stepFollower()函数中封装了Follower节点处理消息的行为
+	r.reset(term) // 重置raft实例Term、Vote等字段。
+	r.tick = r.tickElection // 将tick字段设置成tickElection函数
+	r.lead = lead // 设置当前集群的leader节点
+	r.state = StateFollower // 设置当前节点的角色
 	r.logger.Infof("%x became follower at term %d", r.id, r.Term)
 }
 

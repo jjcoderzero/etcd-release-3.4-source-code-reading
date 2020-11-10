@@ -7,35 +7,25 @@ import (
 	pb "go.etcd.io/etcd/raft/raftpb"
 )
 
-// ErrCompacted is returned by Storage.Entries/Compact when a requested
-// index is unavailable because it predates the last snapshot.
+// ErrCompacted在请求的索引不可用时由Storage.Entries/Compact返回，因为它先于最后一个快照。
 var ErrCompacted = errors.New("requested index is unavailable due to compaction")
 
-// ErrSnapOutOfDate is returned by Storage.CreateSnapshot when a requested
-// index is older than the existing snapshot.
+// ErrSnapOutOfDate在被请求的索引比现有快照更早时由Storage.CreateSnapshot返回。
 var ErrSnapOutOfDate = errors.New("requested index is older than the existing snapshot")
 
-// ErrUnavailable is returned by Storage interface when the requested log entries
-// are unavailable.
+// 当请求的日志项不可用时，存储接口返回ErrUnavailable。
 var ErrUnavailable = errors.New("requested entry at index is unavailable")
 
-// ErrSnapshotTemporarilyUnavailable is returned by the Storage interface when the required
-// snapshot is temporarily unavailable.
+// 当所需的快照暂时不可用时，存储接口返回ErrSnapshotTemporarilyUnavailable。
 var ErrSnapshotTemporarilyUnavailable = errors.New("snapshot is temporarily unavailable")
 
-// Storage is an interface that may be implemented by the application
-// to retrieve log entries from storage.
-//
-// If any Storage method returns an error, the raft instance will
-// become inoperable and refuse to participate in elections; the
-// application is responsible for cleanup and recovery in this case.
+// Storage是应用程序实现的接口，用于从存储中检索日志条目。如果任何存储方法返回错误，raft实例将无法操作并拒绝参与选举;在这种情况下，应用程序负责清理和恢复。
 type Storage interface {
 	// TODO(tbg): split this into two interfaces, LogStorage and StateStorage.
 
-	// 返回Storage中记录的状态信息，返回的是HardState和ConfState实例。
-	InitialState() (pb.HardState, pb.ConfState, error)
-	// Entries方法返回指定范围的Entry记录[lo,hi).maxSize限定了返回的Entry集合的字节数上限。Entries返回至少一个条目(如果有的话)
-	Entries(lo, hi, maxSize uint64) ([]pb.Entry, error)
+	InitialState() (pb.HardState, pb.ConfState, error) // 返回Storage中记录的状态信息，返回的是HardState和ConfState实例。
+
+	Entries(lo, hi, maxSize uint64) ([]pb.Entry, error) // // Entries方法返回指定范围的Entry记录[lo,hi).maxSize限定了返回的Entry集合的字节数上限。Entries返回至少一个条目(如果有的话)
 
 	Term(i uint64) (uint64, error) // 查询指定Index对应的Entry的Term值。
 
